@@ -67,7 +67,7 @@ export default function TypingLive() {
         </div>
         <div className="flex bg-gray-100 p-1 rounded-xl">
           <button onClick={() => setRole('writer')} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${role === 'writer' ? 'bg-black text-white' : 'text-gray-500'}`}>写者</button>
-          <button onClick={() => setRole('viewer')} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${role === 'viewer' ? 'bg-black text-white' : 'text-gray-500'}`}>观众</button>
+          <button onClick={() => setRole('viewer')} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${role === 'viewer' ? 'bg-black text-white' : 'text-gray-500'}`}>读者</button>
         </div>
       </header>
       
