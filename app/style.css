@@ -1,0 +1,24 @@
+/* 🔨 锤子：以右下角（手柄末端）为基点旋转 */
+@keyframes hammerPivotStrike {
+    0% { transform: rotate(45deg); opacity: 0; }
+    100% { transform: rotate(0deg); opacity: 1; }
+  }
+  
+  .hammer-animation {
+    display: inline-block;
+    transform-origin: bottom right; 
+    animation: hammerPivotStrike 0.5s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
+  }
+  
+  /* 👏 鼓掌：在原地上下快速跳动两次 */
+  @keyframes applauseJump {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-25px); }
+    50% { transform: translateY(0); }
+    75% { transform: translateY(-25px); }
+  }
+  
+  .applause-animation {
+    display: inline-block;
+    animation: applauseJump 0.4s ease-in-out;
+  }
