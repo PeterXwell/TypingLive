@@ -1,24 +1,96 @@
-/* 🔨 锤子：以右下角（手柄末端）为基点旋转 */
-@keyframes hammerPivotStrike {
-    0% { transform: rotate(45deg); opacity: 0; }
-    100% { transform: rotate(0deg); opacity: 1; }
-  }
-  
-  .hammer-animation {
-    display: inline-block;
-    transform-origin: bottom right; 
-    animation: hammerPivotStrike 0.5s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
-  }
-  
-  /* 👏 鼓掌：在原地上下快速跳动两次 */
-  @keyframes applauseJump {
-    0%, 100% { transform: translateY(0); }
-    25% { transform: translateY(-25px); }
-    50% { transform: translateY(0); }
-    75% { transform: translateY(-25px); }
-  }
-  
-  .applause-animation {
-    display: inline-block;
-    animation: applauseJump 0.4s ease-in-out;
-  }
+/* app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --fc-red: #A31F34;
+  --fc-white: #F0F0F0;
+  --fc-black: #000000;
+  --fc-yellow: #F8D030;
+}
+
+body {
+  background-color: var(--fc-black);
+  color: var(--fc-white);
+  /* 使用一个容易获取的像素字体作为后备 */
+  font-family: 'vt323', monospace; 
+  image-rendering: pixelated;
+  overflow-x: hidden;
+}
+
+/* 引入 VT323 像素字体 */
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+/* CRT 扫描线和微颤动效果叠加层 */
+.crt::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+/* 像素风格的通用容器 */
+.pixel-box {
+  border: 4px solid #000;
+  box-shadow: 
+    -4px 0 0 0 #000,
+    4px 0 0 0 #000,
+    0 -4px 0 0 #000,
+    0 4px 0 0 #000;
+  background-color: #fff;
+  image-rendering: pixelated;
+}
+
+/* 像素风格按钮 */
+.pixel-btn {
+  display: inline-block;
+  position: relative;
+  text-align: center;
+  text-decoration: none;
+  border: 4px solid #000;
+  padding: 8px 16px;
+  background-color: #fff;
+  color: #000;
+  box-shadow: inset -4px -4px 0px 0px #808080;
+  transition: all 0.1s;
+  cursor: pointer;
+}
+
+.pixel-btn:active {
+  box-shadow: inset 4px 4px 0px 0px #808080;
+  transform: translate(2px, 2px);
+}
+
+.pixel-btn-red {
+  background-color: var(--fc-red);
+  color: #fff;
+  box-shadow: inset -4px -4px 0px 0px #5a111d;
+}
+
+.pixel-btn-yellow {
+  background-color: var(--fc-yellow);
+  color: #000;
+  box-shadow: inset -4px -4px 0px 0px #b09322;
+}
+
+/* 8-bit 选择光标 */
+.pixel-cursor {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background-color: var(--fc-red);
+  animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
