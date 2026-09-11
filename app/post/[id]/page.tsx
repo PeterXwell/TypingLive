@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { checkSensitiveWord, hasSensitiveWord, preloadSensitiveWords } from '@/app/lib/sensitive';
+import { ownedRowIds } from '@/app/lib/ownership';
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '无记录';
@@ -34,13 +35,18 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   const [newComment, setNewComment] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [userName, setUserName] = useState('无名氏');
+  // 由 author_hash 判定出的「我发的评论 id」。不用昵称判断 —— 昵称不唯一也不保密。
+  const [ownedCommentIds, setOwnedCommentIds] = useState<Set<string>>(new Set());
 
   const contentRef = useRef('');
   const isOwnerRef = useRef(false);
 
   const fetchComments = useCallback(async () => {
     const { data } = await supabase.from('comments').select('*').eq('post_id', postId).order('created_at', { ascending: true });
-    if (data) setComments(data);
+    if (data) {
+      setComments(data);
+      setOwnedCommentIds(await ownedRowIds(data, (c) => c.author_hash));
+    }
   }, [postId]);
 
   useEffect(() => {
@@ -127,20 +133,31 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
     setIsEditingTitle(false);
   };
 
-  // 只能删自己发的评论。默认名字「无名氏」是所有未设置昵称的用户共用的，
-  // 不能拿来当身份，所以没设昵称时一律不给删除入口。
-  const canDeleteComment = (authorName: string) =>
-    userName !== '无名氏' && authorName === userName;
+  // 只能删自己发的评论。归属由数据库里的 author_hash 判定（见
+  // supabase/ownership-rls.sql），前端算同样的哈希来对齐 —— 不靠昵称，
+  // 所以重名也不会误判；真正的强制在 RLS，这里只是控制按钮显示。
+  const canDeleteComment = (msg: { id: string; author_name: string; author_hash?: string | null }) => {
+    if (ownedCommentIds.has(msg.id)) return true;
+    // 过渡兼容：迁移之前的老评论没有 author_hash，暂时退回按昵称判断。
+    // 历史数据认领/锁死之后（见 SQL 末尾）可以把这两行删掉。
+    if (!msg.author_hash) return userName !== '无名氏' && msg.author_name === userName;
+    return false;
+  };
 
   const deleteComment = async (commentId: string) => {
     const target = comments.find((c) => c.id === commentId);
-    if (!target || !canDeleteComment(target.author_name)) return;
+    if (!target || !canDeleteComment(target)) return;
     const { error } = await supabase.from('comments').delete().eq('id', commentId);
     if (error) {
       alert('删除失败，请检查网络');
       return;
     }
     setComments(prev => prev.filter(c => c.id !== commentId));
+    setOwnedCommentIds(prev => {
+      const next = new Set(prev);
+      next.delete(commentId);
+      return next;
+    });
   };
 
   const submitComment = async () => {
@@ -242,7 +259,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
               <div key={msg.id} className="bg-[#c6c6c6] border-4 border-black p-2 text-[#313131] shadow-[4px_4px_0_rgba(0,0,0,0.3)] relative">
                 <div className="flex justify-between items-center gap-2 text-[8px] font-bold border-b border-black/10 mb-1">
                   <span className="opacity-60 truncate">@{msg.author_name} · {formatDate(msg.created_at)}</span>
-                  {canDeleteComment(msg.author_name) && (
+                  {canDeleteComment(msg) && (
                     <button
                       type="button"
                       onClick={() => deleteComment(msg.id)}

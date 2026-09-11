@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { checkSensitiveWord, preloadSensitiveWords } from '@/app/lib/sensitive';
+import { getDeviceId } from '@/app/lib/device';
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '无记录';
@@ -20,6 +21,8 @@ export default function ProfilePage() {
   const [posts, setPosts] = useState<any[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const loadData = useCallback(async (currentName: string) => {
     if (activeTab === 'mine') {
@@ -51,6 +54,7 @@ export default function ProfilePage() {
     }
     setUserName(name);
     setNewName(name);
+    setDeviceId(getDeviceId());
     loadData(name);
     preloadSensitiveWords();
   }, [loadData]);
@@ -103,9 +107,25 @@ export default function ProfilePage() {
 
   const executeDelete = async () => {
     if (!deleteId) return;
-    await supabase.from('posts').delete().eq('id', deleteId);
+    // supabase-js 不抛异常，错误在返回值的 error 里，必须显式检查
+    const { error } = await supabase.from('posts').delete().eq('id', deleteId);
+    if (error) {
+      alert('删除失败，请检查网络或权限');
+      return;
+    }
     setPosts(prev => prev.filter(p => p.id !== deleteId));
     setDeleteId(null);
+  };
+
+  const copyDeviceId = async () => {
+    if (!deviceId) return;
+    try {
+      await navigator.clipboard.writeText(deviceId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      alert('复制失败，请手动长按选中复制');
+    }
   };
 
   return (
@@ -152,6 +172,25 @@ export default function ProfilePage() {
             </div>
           ))}
           {posts.length === 0 && <div className="text-center py-20 opacity-20 text-4xl font-bold uppercase tracking-widest">Empty Slot</div>}
+        </div>
+
+        <div className="mt-12 pt-4 border-t-4 border-[#4e4e4e]">
+          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">
+            本机标识（你的身份凭证，勿公开）
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <code className="select-text text-[11px] text-[#54a02a] bg-black/40 px-2 py-1 border-2 border-[#4e4e4e] break-all">
+              {deviceId || '（仅客户端可见）'}
+            </code>
+            <button type="button" onClick={copyDeviceId} className="mc-btn-small bg-[#4e4e4e]">
+              {copied ? '已复制' : '复制'}
+            </button>
+          </div>
+          <p className="text-[10px] text-white/30 font-bold mt-3 leading-relaxed">
+            评论和帖子的「能不能改 / 能不能删」由它决定，服务端按它校验，跟昵称无关。
+            换浏览器或清除网站数据会换一个新标识，旧内容将不再归你管理；
+            认领历史数据见仓库 supabase/ownership-rls.sql。
+          </p>
         </div>
       </div>
 

@@ -113,6 +113,25 @@ export function installLegacyPolyfills(): void {
         configurable: true,
       });
     }
+    // crypto.randomUUID  (Safari 15.4+)：本机标识与归属哈希都依赖它
+    const c = globalThis.crypto as unknown as
+      | { getRandomValues?: (a: Uint8Array) => Uint8Array; randomUUID?: () => string }
+      | undefined;
+    if (c && typeof c.randomUUID !== 'function' && typeof c.getRandomValues === 'function') {
+      Object.defineProperty(c, 'randomUUID', {
+        value: function randomUUID(): string {
+          const b = new Uint8Array(16);
+          c.getRandomValues!(b);
+          b[6] = (b[6] & 0x0f) | 0x40; // version 4
+          b[8] = (b[8] & 0x3f) | 0x80; // variant 10xx
+          const hex = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+          return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        },
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+    }
   } catch {
     // 补齐失败也不能拖垮整站
   }
