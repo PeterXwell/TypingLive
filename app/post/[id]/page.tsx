@@ -127,8 +127,19 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
     setIsEditingTitle(false);
   };
 
+  // 只能删自己发的评论。默认名字「无名氏」是所有未设置昵称的用户共用的，
+  // 不能拿来当身份，所以没设昵称时一律不给删除入口。
+  const canDeleteComment = (authorName: string) =>
+    userName !== '无名氏' && authorName === userName;
+
   const deleteComment = async (commentId: string) => {
-    await supabase.from('comments').delete().eq('id', commentId);
+    const target = comments.find((c) => c.id === commentId);
+    if (!target || !canDeleteComment(target.author_name)) return;
+    const { error } = await supabase.from('comments').delete().eq('id', commentId);
+    if (error) {
+      alert('删除失败，请检查网络');
+      return;
+    }
     setComments(prev => prev.filter(c => c.id !== commentId));
   };
 
@@ -228,11 +239,18 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           <h2 className="text-[#54a02a] text-lg font-bold border-b-4 border-[#54a02a] uppercase tracking-widest pb-1">时间轴评论</h2>
           <div className="flex-1 space-y-4 overflow-y-auto pr-2">
             {comments.map(msg => (
-              <div key={msg.id} className="bg-[#c6c6c6] border-4 border-black p-2 text-[#313131] shadow-[4px_4px_0_rgba(0,0,0,0.3)] group relative">
-                <div className="flex justify-between items-center text-[8px] font-bold border-b border-black/10 mb-1 opacity-60">
-                  <span>@{msg.author_name} · {formatDate(msg.created_at)}</span>
-                  {(role === 'writer' || msg.author_name === userName) && (
-                    <button onClick={() => deleteComment(msg.id)} className="text-red-700 hover:bg-red-200 px-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">销毁</button>
+              <div key={msg.id} className="bg-[#c6c6c6] border-4 border-black p-2 text-[#313131] shadow-[4px_4px_0_rgba(0,0,0,0.3)] relative">
+                <div className="flex justify-between items-center gap-2 text-[8px] font-bold border-b border-black/10 mb-1">
+                  <span className="opacity-60 truncate">@{msg.author_name} · {formatDate(msg.created_at)}</span>
+                  {canDeleteComment(msg.author_name) && (
+                    <button
+                      type="button"
+                      onClick={() => deleteComment(msg.id)}
+                      aria-label="删除这条评论"
+                      className="mc-btn-danger shrink-0"
+                    >
+                      销毁
+                    </button>
                   )}
                 </div>
                 <p className="text-sm font-bold leading-tight">{msg.content}</p>
@@ -372,6 +390,29 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
         .mc-btn-send:disabled {
           opacity: 0.45;
           cursor: not-allowed !important;
+        }
+
+        /* 评论「销毁」按钮：始终可见（不再依赖 PC 的 hover），手机上也能直接点 */
+        .mc-btn-danger {
+          padding: 3px 8px;
+          font-size: 10px;
+          line-height: 1;
+          color: #fff;
+          font-weight: bold;
+          background: #a31f34;
+          border-top: 2px solid rgba(255,255,255,0.45);
+          border-left: 2px solid rgba(255,255,255,0.45);
+          border-right: 2px solid #000;
+          border-bottom: 2px solid #000;
+          text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+          white-space: nowrap;
+          min-height: 24px;
+          display: inline-flex;
+          align-items: center;
+        }
+        .mc-btn-danger:active {
+          transform: translate(1px, 1px);
+          border: 0;
         }
       `}</style>
     </div>

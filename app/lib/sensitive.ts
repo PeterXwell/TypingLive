@@ -3,6 +3,13 @@
 
 const IS_ALNUM = /[A-Za-z0-9]/;
 
+// /public/words.json 是公开的通用敏感词库，里面混进了一些完全正常的词，
+// 靠子串匹配就会误伤。例如「测试」在原始词库里跟 test/Test/tESt、「客服」
+// 「助理」「辅助程序」「运营」挨在一起，那一段本来是拦「私服/外挂/推广小号」
+// 之类的垃圾信息，把「测试」一起收进去属于误收。
+// 这里维护白名单：装载词库时直接丢弃这些词。要放行别的词，往下面加一行即可。
+const ALLOWLIST = new Set<string>(['测试', 'test']);
+
 function isAlnumAt(s: string, i: number): boolean {
   if (i < 0 || i >= s.length) return false;
   const c = s.charCodeAt(i);
@@ -25,6 +32,7 @@ function processWords(wordsData: unknown) {
     if (!raw) continue;
     const w = String(raw).trim().toLowerCase();
     if (!w) continue;
+    if (ALLOWLIST.has(w)) continue;
     if (w.length === 1) continue;
     if (/^[A-Za-z0-9]+$/.test(w) && w.length < 3) continue;
     if (IS_ALNUM.test(w)) {
