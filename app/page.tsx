@@ -39,6 +39,8 @@ export default function PlazaPage() {
   const [newTitle, setNewTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // 首屏尚未拿到数据时显示「加载中」，避免把「脚本没跑起来」误显示成「暂无记录」
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,6 +55,8 @@ export default function PlazaPage() {
       }
     } catch {
       setLoadError('记录加载失败，请检查网络后下拉刷新');
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -187,7 +191,12 @@ export default function PlazaPage() {
             </button>
           </div>
         )}
-        {!loadError && posts.length === 0 && (
+        {isLoading && !loadError && (
+          <div className="col-span-full text-center opacity-40 text-2xl font-bold uppercase tracking-widest py-20">
+            加载中…
+          </div>
+        )}
+        {!isLoading && !loadError && posts.length === 0 && (
           <div className="col-span-full text-center opacity-40 text-2xl font-bold uppercase tracking-widest py-20">
             暂无记录
           </div>
