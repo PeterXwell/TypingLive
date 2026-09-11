@@ -32,6 +32,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   const [showExitModal, setShowExitModal] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [isSendingComment, setIsSendingComment] = useState(false);
   const [userName, setUserName] = useState('无名氏');
 
   const contentRef = useRef('');
@@ -131,6 +132,29 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
     setComments(prev => prev.filter(c => c.id !== commentId));
   };
 
+  const submitComment = async () => {
+    const text = newComment.trim();
+    if (!text || isSendingComment) return;
+    if (await checkSensitiveWord(text)) {
+      alert('评论包含敏感内容，无法发布！');
+      return;
+    }
+    setIsSendingComment(true);
+    try {
+      // supabase-js 不会 reject，而是把错误放在返回值的 error 里，必须显式检查，
+      // 否则发送失败时也会清空输入框，看起来像「发出去了」。
+      const { error } = await supabase
+        .from('comments')
+        .insert([{ post_id: postId, author_name: userName, content: text }]);
+      if (error) throw error;
+      setNewComment('');
+    } catch {
+      alert('发送失败，请检查网络');
+    } finally {
+      setIsSendingComment(false);
+    }
+  };
+
   if (!post) return <div className="min-h-screen bg-[#313131] flex items-center justify-center text-white font-mono uppercase tracking-widest">加载存档中...</div>;
 
   return (
@@ -215,26 +239,25 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
               </div>
             ))}
           </div>
-          <div className="bg-[#313131] border-4 border-[#8b8b8b] p-2 flex gap-2">
+          <div className="bg-[#313131] border-4 border-[#8b8b8b] p-2 flex gap-2 items-center">
             <input 
-              className="flex-1 bg-transparent outline-none text-xs text-[#54a02a] font-bold" 
+              className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#54a02a] font-bold" 
               placeholder="留下你的印记..." 
               value={newComment} 
               onChange={handleCommentChange} // 接入拦截
+              enterKeyHint="send"
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  (async () => {
-                    if (!newComment.trim()) return;
-                    if (await checkSensitiveWord(newComment)) {
-                      alert('评论包含敏感内容，无法发布！');
-                      return;
-                    }
-                    await supabase.from('comments').insert([{ post_id: postId, author_name: userName, content: newComment }]);
-                    setNewComment('');
-                  })();
-                }
+                if (e.key === 'Enter') submitComment();
               }} 
             />
+            <button
+              type="button"
+              onClick={submitComment}
+              disabled={isSendingComment || !newComment.trim()}
+              className="mc-btn-send shrink-0"
+            >
+              {isSendingComment ? '发送中' : '发送'}
+            </button>
           </div>
         </aside>
       </div>
@@ -325,6 +348,30 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
         .mc-btn-small:active {
            transform: translate(1px, 1px);
            border: 0;
+        }
+
+        /* 评论区发送按钮：沿用 mc-btn-small 的立体描边，换成主题绿 */
+        .mc-btn-send {
+          padding: 6px 12px;
+          color: white;
+          font-weight: bold;
+          background: #54a02a;
+          border-top: 2px solid rgba(255,255,255,0.5);
+          border-left: 2px solid rgba(255,255,255,0.5);
+          border-right: 2px solid #000;
+          border-bottom: 2px solid #000;
+          outline: 2px solid #313131;
+          text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+          white-space: nowrap;
+          min-height: 32px;
+        }
+        .mc-btn-send:active:not(:disabled) {
+          transform: translate(1px, 1px);
+          border: 0;
+        }
+        .mc-btn-send:disabled {
+          opacity: 0.45;
+          cursor: not-allowed !important;
         }
       `}</style>
     </div>
